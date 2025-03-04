@@ -330,15 +330,15 @@ app.get('/exchange', async (req, res) => {
         const vehicleId = vehicleResponse.vehicles[0];
         console.log(`✅ Storing vehicle ${vehicleId} in database...`);
 
-        // Store token in the database
+        // Store the token in the database
         const result = await db.query(
-            "INSERT INTO vehicle (vehicle_id, access_token, refresh_token, expires_at) VALUES ($1, $2, $3, NOW() + interval '2 hours') ON CONFLICT (vehicle_id) DO UPDATE SET access_token = $2, refresh_token = $3, expires_at = NOW() + interval '2 hours' RETURNING *",
+            "INSERT INTO vehicles (vehicle_id, access_token, refresh_token, expires_at) VALUES ($1, $2, $3, NOW() + interval '2 hours') ON CONFLICT (vehicle_id) DO UPDATE SET access_token = $2, refresh_token = $3, expires_at = NOW() + interval '2 hours' RETURNING *",
             [vehicleId, accessToken, refreshToken]
         );
 
         console.log("✅ Database insert successful:", result.rows);
 
-        return res.json({ message: "Token stored successfully", vehicleId, accessToken });
+        return res.json({ message: "success", vehicleId, accessToken });
 
     } catch (error) {
         console.error("❌ Error exchanging token or storing data:", error);
