@@ -35,6 +35,16 @@ const client = new smartcar.AuthClient({
   mode: 'simulated', // one of ['live', 'simulated']
 });
 
+const { Client } = require('pg');
+
+const db = new Client({
+    connectionString: process.env.DATABASE_URL,
+});
+
+db.connect()
+  .then(() => console.log("✅ Connected to PostgreSQL"))
+  .catch(err => console.error("❌ Database connection error:", err));
+
 // Exchanges code for access object, attaches access object to session cookie as a JWT
 app.get('/exchange', async function(req, res) {
   try {
