@@ -1,8 +1,12 @@
+require('dotenv').config(); // Load environment variables at the very top
+
 const express = require('express');
 const cors = require('cors');
 const { Client } = require('pg');
 const smartcar = require('smartcar');
 const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
+
 
 // Initialize Express app
 const app = express();
