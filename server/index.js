@@ -291,5 +291,32 @@ app.post('/smartcar-webhook', async function(req, res) {
     res.status(500).json({ error: 'Unknown event type'})
   }
 })
+app.get('/exchange', async (req, res) => {
+    try {
+        const code = req.query.code;
+        if (!code) {
+            return res.status(400).json({ error: "Missing authorization code" });
+        }
 
+        // Exchange code for access token
+        const access = await client.exchangeCode(code);
+
+        // Store token in PostgreSQL
+        const { accessToken, refreshToken, expiresIn } = access;
+        const vehicleResponse = await smartcar.getVehicles(accessToken);
+        const vehicleId = vehicleResponse.vehicles[0];
+
+        // Store the token in the database
+        await db.query(
+            "INSERT INTO vehicle (vehicle_id, access_token, refresh_token, expires_at) VALUES ($1, $2, $3, NOW() + interval '2 hours') ON CONFLICT (vehicle_id) DO UPDATE SET access_token = $2, refresh_token = $3, expires_at = NOW() + interval '2 hours'",
+            [vehicleId, accessToken, refreshToken]
+        );
+
+        return res.json({ message: "Token stored successfully", vehicleId, accessToken });
+
+    } catch (error) {
+        console.error("Error exchanging token:", error);
+        res.status(500).json({ error: "Failed to exchange token" });
+    }
+});
 app.listen(port, () => console.log(`Listening on port ${port}`));
