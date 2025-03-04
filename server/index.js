@@ -71,7 +71,7 @@ app.get('/exchange', async (req, res) => {
 
         // Store the token in the database
         const result = await db.query(
-            `INSERT INTO vehicles 
+            `INSERT INTO vehicle 
             (vehicle_id, access_token, refresh_token, expires_at) 
             VALUES ($1, $2, $3, $4) 
             ON CONFLICT (vehicle_id) DO UPDATE 
