@@ -303,30 +303,46 @@ app.post('/smartcar-webhook', async function(req, res) {
 })
 app.get('/exchange', async (req, res) => {
     try {
+        console.log("🔄 Received Smartcar callback request...");
+
         const code = req.query.code;
         if (!code) {
+            console.log("❌ Missing authorization code");
             return res.status(400).json({ error: "Missing authorization code" });
         }
 
         // Exchange code for access token
         const access = await client.exchangeCode(code);
+        console.log("✅ Smartcar token received:", access);
 
-        // Store token in PostgreSQL
-        const { accessToken, refreshToken, expiresIn } = access;
+        // Extract token details
+        const { accessToken, refreshToken } = access;
+
+        // Get vehicle ID
         const vehicleResponse = await smartcar.getVehicles(accessToken);
-        const vehicleId = vehicleResponse.vehicles[0];
+        console.log("🚗 Vehicle response from Smartcar:", vehicleResponse);
 
-        // Store the token in the database
-        await db.query(
-            "INSERT INTO vehicle (vehicle_id, access_token, refresh_token, expires_at) VALUES ($1, $2, $3, NOW() + interval '2 hours') ON CONFLICT (vehicle_id) DO UPDATE SET access_token = $2, refresh_token = $3, expires_at = NOW() + interval '2 hours'",
+        if (!vehicleResponse.vehicles.length) {
+            console.log("❌ No vehicles returned from Smartcar.");
+            return res.status(400).json({ error: "No vehicles found." });
+        }
+
+        const vehicleId = vehicleResponse.vehicles[0];
+        console.log(`✅ Storing vehicle ${vehicleId} in database...`);
+
+        // Store token in the database
+        const result = await db.query(
+            "INSERT INTO vehicle (vehicle_id, access_token, refresh_token, expires_at) VALUES ($1, $2, $3, NOW() + interval '2 hours') ON CONFLICT (vehicle_id) DO UPDATE SET access_token = $2, refresh_token = $3, expires_at = NOW() + interval '2 hours' RETURNING *",
             [vehicleId, accessToken, refreshToken]
         );
+
+        console.log("✅ Database insert successful:", result.rows);
 
         return res.json({ message: "Token stored successfully", vehicleId, accessToken });
 
     } catch (error) {
-        console.error("Error exchanging token:", error);
-        res.status(500).json({ error: "Failed to exchange token" });
+        console.error("❌ Error exchanging token or storing data:", error);
+        res.status(500).json({ error: "Failed to exchange token or store data." });
     }
 });
 app.listen(port, () => console.log(`Listening on port ${port}`));
