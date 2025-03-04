@@ -31,7 +31,6 @@ const client = new smartcar.AuthClient({
     mode: process.env.SMARTCAR_MODE || 'simulated', // 'live' or 'simulated'
 });
 
-// Exchange Authorization Code Route
 app.get('/exchange', async (req, res) => {
     try {
         console.log("🔄 Received Smartcar callback request...");
@@ -45,9 +44,15 @@ app.get('/exchange', async (req, res) => {
         // Exchange code for access token
         const access = await client.exchangeCode(code);
         console.log("✅ Smartcar token received:", {
-            accessToken: access.accessToken ? '✓' : '✗',
-            refreshToken: access.refreshToken ? '✓' : '✗'
+            accessToken: !!access.accessToken ? '✓' : '✗',
+            refreshToken: !!access.refreshToken ? '✓' : '✗'
         });
+
+        // If Smartcar session expired
+        if (!access.accessToken) {
+            console.log("❌ Smartcar session expired or invalid");
+            return res.status(401).json({ error: "Session expired. Please log in again." });
+        }
 
         // Extract token details
         const { accessToken, refreshToken, expiration } = access;
@@ -66,7 +71,7 @@ app.get('/exchange', async (req, res) => {
 
         // Store the token in the database
         const result = await db.query(
-            `INSERT INTO vehicle 
+            `INSERT INTO vehicles 
             (vehicle_id, access_token, refresh_token, expires_at) 
             VALUES ($1, $2, $3, $4) 
             ON CONFLICT (vehicle_id) DO UPDATE 
@@ -84,7 +89,7 @@ app.get('/exchange', async (req, res) => {
 
         console.log("✅ Database insert successful:", result.rows[0]);
 
-        // Redirect or send response as needed
+        // Return success response
         return res.json({ 
             message: "Successfully connected vehicle", 
             vehicleId, 
@@ -92,7 +97,7 @@ app.get('/exchange', async (req, res) => {
         });
 
     } catch (error) {
-        console.error("❌ Error in exchange route:", error);
+        console.error("❌ Error in exchange route:", error.response?.data || error);
         res.status(500).json({ 
             error: "Failed to exchange token or store data",
             details: error.message 
@@ -107,7 +112,7 @@ app.post('/refresh-token', async (req, res) => {
 
         // Retrieve stored refresh token from database
         const tokenResult = await db.query(
-            'SELECT refresh_token FROM vehicles WHERE vehicle_id = $1',
+            'SELECT refresh_token FROM vehicle WHERE vehicle_id = $1',
             [vehicleId]
         );
 
