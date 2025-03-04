@@ -127,7 +127,7 @@ app.post('/refresh-token', async (req, res) => {
 
         // Update database with new tokens
         await db.query(
-            `UPDATE vehicles 
+            `UPDATE vehicle 
             SET access_token = $1, 
                 refresh_token = $2, 
                 expires_at = $3 
